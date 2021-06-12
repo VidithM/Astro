@@ -12,7 +12,7 @@ from message import Message
 class Network:
     def __init__(self):
         self.inGame = False
-        self.clients = {} #Maps ip -> send message
+        self.clients = {} #Maps ip -> TCP connection
 
         self.ip = socket.gethostbyname(socket.gethostname())
         self.port = 5050
@@ -28,14 +28,15 @@ class Network:
 
     def broadcast(self, msg):
         for client in self.clients:
-            self.clients[client] = msg #Client threads will pick up the message
+            conn = self.clients[client]
+            conn.send(pickle.dumps(msg))
             
-    def process_req(self, msg, addr):
+    def process_req(self, msg, addr, conn):
         typ = msg.req_type
         if(typ == REQ_TYPES.JOIN_LOBBY):
             cprint('[LOG] RECEIVED JOIN LOBBY REQ FROM ' + str(addr), 'yellow')
             if((not addr in self.clients) and (not self.inGame) and len(self.clients) < 4):
-                self.clients[addr] = None
+                self.clients[addr] = conn
                 cprint('[LOG] CONNECTED CLIENT ' + str(addr), 'yellow')
                 print(self.clients)
             else:
@@ -73,19 +74,13 @@ class Network:
             if(sz):
                 sz = int(sz)
                 msg = pickle.loads(conn.recv(sz))
-                self.process_req(msg, addr)
+                self.process_req(msg, addr, conn)
 
             #Check for client disconnect
             if(not (addr in self.clients)):
                 cprint('[LOG] CLOSED CONNECTION W/ ' + str(addr), 'yellow')
                 conn.close()
                 break #Thread is suspended once function returns
-            else:   
-                to_send = self.clients[addr]
-                if(to_send):
-                    conn.send(pickle.dumps(to_send))
-                    self.clients[addr] = None
-        
 
 if __name__ == '__main__':
     nw = Network()

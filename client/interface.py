@@ -12,7 +12,8 @@ in_lobby = False
 
 my_conn = Network('192.168.1.244', 5050)
 
-typ = input()
+while(True):
+    typ = input()
 
-send = Message(REQ_TYPES[typ])
-my_conn.make_request(send)
+    send = Message(REQ_TYPES[typ])
+    my_conn.make_request(send)
