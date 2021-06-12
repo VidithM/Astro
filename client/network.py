@@ -16,6 +16,9 @@ class Network:
         self.endpoint = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.endpoint.connect((ip, port))
 
+        listen_thread = threading.Thread(target=self.listen)
+        listen_thread.start()
+
     def make_request(self, req):
         validate_request(req) #Throws exception for illegal requests
 
@@ -24,6 +27,16 @@ class Network:
         send_sz = req_sz + (b' ' * (1024 - len(req_sz))) #1024 byte header
         self.endpoint.send(send_sz)
         self.endpoint.send(serialized_req)
+    
+    def listen(self):
+        while(True):
+            data = self.endpoint.recv(1024)
+            if(data):
+                msg = pickle.loads(data)
+                print(msg.req_type)
+                
+
+
        
 
 
