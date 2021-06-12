@@ -1,0 +1,24 @@
+- Client-Server
+    - Game
+        - Player can control a spaceship, shoot projectiles
+        - Use realistic-feeling physics simulation (inertia, drag)
+    - Networking
+       - Client Server
+       - Server maintains whether it is in game or not
+            - If not in game, accepts client connections to join/leave
+            - If in game, receives gamestate updates from clients and broadcasts
+            
+
+    - Gamestate
+        - Position (x, y)
+        - Velocity (x, y)
+        - Angle
+        - Projectile data 
+            - Pos, velocity, who fired 
+    
+    - Organization
+        - Separate network module for sure
+            - Allows us to easily send/receive gamestate updates, connect to p2p cluster 
+            
+
+        
