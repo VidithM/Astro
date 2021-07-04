@@ -2,7 +2,7 @@ import socket
 import threading
 import sys
 import pickle
-from termcolor import cprint
+from loguru import logger
 
 sys.path.append('../util/')
 
@@ -19,50 +19,55 @@ class Network:
         self.endpoint = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.endpoint.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.endpoint.bind((self.ip, self.port))
-
-        self.req_queue = []
-
+        logger.info('SERVER STARTED')
         new_client_thread = threading.Thread(target=self.accept_connection)
         new_client_thread.start()
 
 
-    def broadcast(self, msg):
+    def broadcast(self, msg, **kwargs):
         for client in self.clients:
+            if(client == kwargs.get('exclude')):
+                continue
             conn = self.clients[client]
             conn.send(pickle.dumps(msg))
             
     def process_req(self, msg, addr, conn):
         typ = msg.req_type
         if(typ == REQ_TYPES.JOIN_LOBBY):
-            cprint('[LOG] RECEIVED JOIN LOBBY REQ FROM ' + str(addr), 'yellow')
-            if((not addr in self.clients) and (not self.inGame) and len(self.clients) < 4):
+            logger.info(f'RECEIVED JOIN LOBBY REQ FROM {addr}')
+            if((not addr in self.clients) and (not self.inGame)):
                 self.clients[addr] = conn
-                cprint('[LOG] CONNECTED CLIENT ' + str(addr), 'yellow')
-                print(self.clients)
+                logger.info(f'CONNECTED CLIENT {addr}')
+                conn.send(pickle.dumps(Message(REQ_TYPES.APPROVED)))
+                if(len(self.clients) == 4):
+                    #start game
+                    self.inGame = True
+                    dummy = Message(REQ_TYPES.GAMESTATE)
+                    self.broadcast(dummy)
             else:
-                cprint('[ERR] CLIENT COULD NOT JOIN LOBBY! ' + str(addr), 'red')                         
+                logger.error(f'CLIENT COULD NOT JOIN LOBBY! {addr}')
+                conn.send(pickle.dumps(Message(REQ_TYPES.DENIED)))                       
         elif(typ == REQ_TYPES.LEAVE_LOBBY):
             if(addr in self.clients):
                 self.clients.pop(addr)
             else:
-                cprint('[ERR] CLIENT NOT FOUND! ' + str(addr), 'red')
+                logger.error(f'CLIENT NOT FOUND! {addr}')
             
         elif(typ == REQ_TYPES.GAMESTATE):
             msg = Message(REQ_TYPES.GAMESTATE)
             if((addr in self.clients)):
-                self.broadcast(msg)
+                self.broadcast(msg, {'exclude' : addr})
         else:
-            cprint('[ERR] INVALID REQUEST CODE! ' + str(addr), 'red')
+            logger.error(f'INVALID REQUEST CODE! {addr}')
             pass
         
 
     def accept_connection(self):
-        cprint('[LOG] SERVER STARTED', 'yellow')
-        cprint('[LOG] TCP SOCKET OPENED ON ' + str(self.ip) + ' ' + str(self.port), 'yellow')
+        logger.info(f'TCP SOCKET OPENED ON {self.ip}:{self.port}')
         self.endpoint.listen()
         while(True):
             (conn, addr) = self.endpoint.accept()
-            cprint('[LOG] OPENED CONNECTION W/ ' + str(addr), 'yellow')
+            logger.info(f'OPENED CONNECTION W/ {addr[0]}')
             handle_req_thread = threading.Thread(target=self.handle_req, args=(conn, addr[0]))
             handle_req_thread.start()
 
@@ -78,7 +83,8 @@ class Network:
 
             #Check for client disconnect
             if(not (addr in self.clients)):
-                cprint('[LOG] CLOSED CONNECTION W/ ' + str(addr), 'yellow')
+                logger.info(f'CLOSED CONNECTION W/ {addr}')
+                conn.send(pickle.dumps(Message(REQ_TYPES.DISCONNECT)))
                 conn.close()
                 break #Thread is suspended once function returns
 

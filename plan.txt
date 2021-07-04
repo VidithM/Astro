@@ -7,6 +7,11 @@
        - Server maintains whether it is in game or not
             - If not in game, accepts client connections to join/leave
             - If in game, receives gamestate updates from clients and broadcasts
+            - Once game starts (4 clients joined, broadcast a dummy gamestate to prep all clients)
+       - Client:
+            - If it gets gamestate, then in game
+                -  
+            - If it gets lobby update, then in lobby      
             
 
     - Gamestate

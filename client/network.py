@@ -1,8 +1,8 @@
 import socket
 import threading
 import pickle
-from termcolor import cprint
 import sys
+from loguru import logger
 
 sys.path.append('../util')
 
@@ -15,6 +15,8 @@ class Network:
         self.ip = ip 
         self.endpoint = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.endpoint.connect((ip, port))
+        self.connected = True
+        self.msg_queue = []
 
         listen_thread = threading.Thread(target=self.listen)
         listen_thread.start()
@@ -33,9 +35,10 @@ class Network:
             data = self.endpoint.recv(1024)
             if(data):
                 msg = pickle.loads(data)
-                print(msg.req_type)
-                
-
+                self.msg_queue.append(msg)
+    
+    def active(self):
+        return self.connected
 
        
 
